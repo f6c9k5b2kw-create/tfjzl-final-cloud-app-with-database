@@ -131,6 +131,65 @@ def extract_answers(request):
         # For each selected choice, check if it is a correct answer or not
         # Calculate the total score
 #def show_exam_result(request, course_id, submission_id):
+from .models import Question, Choice, Submission, Enrollment, Course
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+
+
+@login_required
+@require_POST
+def submit(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    enrollment = get_object_or_404(
+        Enrollment, user=request.user, course=course
+    )
+    submission = Submission.objects.create(
+        enrollment=enrollment
+    )
+    selected_ids = extract_answers(request)
+    choices = Choice.objects.filter(
+        id__in=selected_ids, question__course=course
+    )
+    submission.choices.set(choices)
+
+    return redirect(
+        'onlinecourse:show_exam_result',
+        course_id=course.id,
+        submission_id=submission.id
+    )
+
+
+@login_required
+def show_exam_result(request, course_id, submission_id):
+    course = get_object_or_404(Course, pk=course_id)
+    submission = get_object_or_404(
+        Submission, pk=submission_id,
+        enrollment__user=request.user,
+        enrollment__course=course
+    )
+    selected_ids = list(
+        submission.choices.values_list('id', flat=True)
+    )
+    total_score = 0
+
+    for question in course.question_set.all():
+        question_ids = set(
+            question.choice_set.values_list('id', flat=True)
+        )
+        answers = question_ids.intersection(selected_ids)
+        if question.is_get_score(answers):
+            total_score += question.grade
+
+    return render(
+        request,
+        'onlinecourse/exam_result_bootstrap.html',
+        {
+            'course': course,
+            'grade': total_score,
+            'selected_ids': selected_ids
+        }
+    )
 
 
 
