@@ -102,12 +102,15 @@ class Enrollment(models.Model):
 #    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
 #    choices = models.ManyToManyField(Choice)
 class Question(models.Model):
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
     question_text = models.CharField(max_length=200)
     grade = models.IntegerField(default=1)
 
     def is_get_score(self, selected_ids):
-        correct_ids = set(self.choice_set.filter(is_correct=True).values_list('id', flat=True))
+        correct_ids = set(
+            self.choice_set.filter(is_correct=True)
+            .values_list('id', flat=True)
+        )
         return set(selected_ids) == correct_ids
 
 
